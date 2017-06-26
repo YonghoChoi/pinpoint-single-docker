@@ -1,0 +1,60 @@
+version: '2.1'
+services:
+  pinpoint-hbase:
+    container_name: pinpoint-hbase
+    hostname: pinpoint-hbase
+    build: pinpoint-hbase
+    #image: yonghochoi/pinpoint-hbase:1.2.6
+    restart: always
+    expose:
+      - "2181"
+      - "16010"
+      - "16201"
+      - "16301"
+    ports:
+      - "2181:2181"
+      - "16010:16010"
+      - "16201:16201"
+      - "16301:16301"
+
+  pinpoint-collector:
+    depends_on:
+      - pinpoint-hbase
+    container_name: pinpoint-collector
+    hostname: pinpoint-collector
+    build: pinpoint-collector
+    #image: yonghochoi/pinpoint-collector:1.6.2
+    restart: always
+    expose:
+      - "9994"
+      - "9995"
+      - "9996"
+    ports:
+      - "9994:9994"
+      - "9995:9995/tcp"
+      - "9996:9996/tcp"
+      - "9995:9995/udp"
+      - "9996:9996/udp"
+    links:
+      - pinpoint-hbase
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://hbase:16010/table.jsp?name=TraceV2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pinpoint-web:
+    depends_on:
+      - pinpoint-hbase
+      - pinpoint-collector
+    container_name: pinpoint-web
+    hostname: pinpoint-web
+    build: pinpoint-web
+    #image: yonghochoi/pinpoint-web:1.6.2
+    restart: always
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    links:
+      - pinpoint-hbase
