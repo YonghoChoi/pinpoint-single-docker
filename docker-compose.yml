@@ -4,7 +4,7 @@ services:
     container_name: pinpoint-hbase
     hostname: pinpoint-hbase
     build: pinpoint-hbase
-    #image: yonghochoi/pinpoint-hbase:1.2.6
+    #image: yonghochoi/pinpoint-hbase
     restart: always
     expose:
       - "2181"

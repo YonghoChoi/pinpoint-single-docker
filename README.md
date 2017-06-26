@@ -1,19 +1,17 @@
-# pinpoint-docker
+# pinpoint-single-docker
+
+![](pinpoint.png)
 
 [Pinpoint](https://github.com/naver/pinpoint)는 대규모 분산 시스템의 성능을 분석하고 문제를 진단, 처리하는 플랫폼입니다. 네이버의 pinpoint를 clone하면 기본적으로 quickstart를 통해 단일 머신에서 간단히 pinpoint를 구동시키고 사용할 수 있습니다. 
 
-하지만 분산형으로는 구성하는 절차가 복잡하기 때문에 구성에 어려움이 있습니다. 이를 편하게 하기 위해 docker로 구성을 해보았습니다. 
-
-분산형으로 pinpoint를 구성하기 위해서는 여기서 사용되는 각 컨테이너들이 모두 구동이 되어야하므로 docker-compose를 사용하여 구동시킬 것을 권장합니다. 
-
-pinpoint는 hbase를 사용하고 있는데 이 hbase를 분산형으로 구성하기 위해서 hadoop과 zookeeper가 필요합니다. zookeeper는 기본 쿼럼을 위해 3대가 필요하기 때문에 docker-compose에 zoo1~3으로 세개의 컨테이너가 사용됩니다.
+단일 머신에서 구동되는 pinpoint에서는 hbase의 저장소로 HDFS가 아닌 로컬 파일 시스템을 사용합니다. 그러므로 하둡이 필요 없고 hbase에 내장된 주키퍼를 사용하기 때문에 주키퍼를 따로 설치할 필요가 없습니다.
 
 구동을 위해 필요한 이미지들은 제 개인 repository에 push를 해두었습니다. 기본적으로 docker-compose.yml에서는 아래의 repository 이미지를 사용합니다.
 
-* [yonghochoi/hadoop](https://hub.docker.com/r/yonghochoi/hadoop/)
-* [yonghochoi/hbase](https://hub.docker.com/r/yonghochoi/hbase/)
-* [yonghochoi/pinpoint-collector](https://hub.docker.com/r/yonghochoi/pinpoint-collector/)
-* [yonghochoi/pinpoint-web](https://hub.docker.com/r/yonghochoi/pinpoint-web/)
+* [yonghochoi/pinpoint-hbase](https://hub.docker.com/r/yonghochoi/pinpoint-hbase/)
+* [yonghochoi/pinpoint-collector](https://hub.docker.com/r/yonghochoi/pinpoint-collector/) (버전 : 1.6.2)
+* [yonghochoi/pinpoint-web](https://hub.docker.com/r/yonghochoi/pinpoint-web/) (버전 : 1.6.2)
+
 
 
 
@@ -62,3 +60,54 @@ $ docker-compose build
 $ docker-compose up -d
 ```
 
+
+
+## 오류가 발생하는 경우
+
+docker-compose를 사용하여 컨테이너가 구동되는 과정에서 hbase가 완전히 준비되지 않은 상태로 pinpoint-collector 또는 pinpoint-web이 구동되면 제대로 동작되지 않는 경우가 있습니다. 
+
+이러한 경우에는 각 컨테이너를 순차적으로 실행을 시켜주면 정상동작합니다. 아래와 같은 순서로 진행해보시길 바랍니다.
+
+1. Pinpoint-collector/web/hbase 종료
+
+   ```shell
+   $ docker stop pinpoint-collector
+   $ docker stop pinpoint-web
+   $ docker stop pinpoint-hbase
+   ```
+
+2. hbase 구동 및 로그 확인
+
+   ```shell
+   $ docker start hbase
+   $ docker logs -f hbase
+   ```
+
+   - Entrypoint에 의해서 컨테이너 구동 시 테이블 생성을 시도하게 됩니다.
+     - 이미 테이블이 생성되어 있는 경우에는 테이블 생성을 skip 합니다.
+   - 테이블 생성 절차가 완료되고 정상 동작까지 로그를 확인 후 아래과정 수행
+
+3. pinpoint-collector 구동 및 로그 확인
+
+   ```shell
+   $ docker start pinpoint-collector
+   $ docker logs -f pinpoint-collector
+   ```
+
+   - Exception이 발생하지 않고 정상동작하는 지 확인
+
+4. pinpoint-web 구동 및 로그 확인
+
+   ```shell
+   $ docker start pinpoint-web
+   $ docker logs -f pinpoint-web
+   ```
+
+   - Exception이 발생하지 않고 정상동작하는 지 확인
+
+
+
+## 참고
+
+- [Pinpoint](https://github.com/naver/pinpoint)
+- [대규모 분산 시스템 추적 플랫폼, Pinpoint
